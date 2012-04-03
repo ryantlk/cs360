@@ -3,19 +3,39 @@
 #include"getWord.h"
 #include"sort.h"
 #include<time.h>
+#include<sys/time.h>
+#include<string.h>
+
+#define SIZE 10000
+
+static int p_sortstring(const void *str1, const void *str2){
+	const char **rec1 = (const char **)str1;
+	const char **rec2 = (const char **)str2;
+	return strcmp(*rec1, *rec2);
+}
 
 int main(){
-	char *words[1000];
-	char *words2[1000];
+	struct timeval start, end;
+	char *words[SIZE];
+	char *words2[SIZE];
 	FILE *fp = fopen("kjvbible.txt", "r");
-	for(int i = 0; i < 1000; i++){
+	for(int i = 0; i < SIZE; i++){
 		words[i] = words2[i] =  getNextWord(fp);
 	}
-	clock_t start = clock();
-	setSortThreads(2);
-	sortThreaded(&words[0], 1000);
-	clock_t end = clock();
-	unsigned long time = (end - start) * 1000 / CLOCKS_PER_SEC;
-	printf("%d\n", (int) start);
+
+	setSortThreads(7);
+	gettimeofday(&start, NULL);
+	sortThreaded(&words[0], SIZE);
+	gettimeofday(&end, NULL);
+	double ts = start.tv_usec;
+	double te = end.tv_usec;
+	printf("%lf\n", (te - ts) / 1000000 );
+
+	gettimeofday(&start, NULL);
+	qsort(words2, SIZE, sizeof(char*), p_sortstring);
+	gettimeofday(&end, NULL);
+	ts = start.tv_usec;
+	te = end.tv_usec;
+	printf("%lf\n", (te - ts) / 1000000 );
 	return 0;
 }

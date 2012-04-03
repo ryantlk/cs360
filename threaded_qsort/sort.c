@@ -73,7 +73,6 @@ static void quickSort(void* p) {
 		SortParams first;  first.array = array; first.left = left; first.right = j;
 		pthread_mutex_lock(&mut);
 		if(threadsLeft > 0){
-			puts("minus thread");
 			threadsLeft--;
 			pthread_mutex_unlock(&mut);
 			pthread_create(&tid, NULL, (void*) quickSort, (void*) &first);
@@ -86,7 +85,6 @@ static void quickSort(void* p) {
 		if(tid != -1){
 			pthread_join(tid, NULL);
 			pthread_mutex_lock(&mut);
-			puts("add thread");
 			threadsLeft++;
 			pthread_mutex_unlock(&mut);
 		}
