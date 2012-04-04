@@ -6,7 +6,7 @@
 #include<sys/time.h>
 #include<string.h>
 
-#define SIZE 10000
+#define SIZE 100000
 
 static int p_sortstring(const void *str1, const void *str2){
 	const char **rec1 = (const char **)str1;
@@ -23,7 +23,7 @@ int main(){
 		words[i] = words2[i] =  getNextWord(fp);
 	}
 
-	setSortThreads(7);
+	setSortThreads(3);
 	gettimeofday(&start, NULL);
 	sortThreaded(&words[0], SIZE);
 	gettimeofday(&end, NULL);
