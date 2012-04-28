@@ -11,9 +11,23 @@
 
 #define PORT_NUMBER 49999
 
+int makeconnection(char *arg);
+
 int main(int argc, char *argv[]){
-	int socketfd;
+	int socketfd = makeconnection(argv[1]);
 	char date[100];
+	read(socketfd, date, 100);
+	for(int i = 0; i < 20; i++){
+		printf("%c", date[i]);
+	}
+	puts("");
+	close(socketfd);
+
+	return 0;
+}
+
+int makeconnection(char *arg){
+	int socketfd;
 	struct sockaddr_in servAddr;
 	struct hostent *hostEntry;
 	struct in_addr **pptr;
@@ -23,12 +37,11 @@ int main(int argc, char *argv[]){
 		exit(EXIT_FAILURE);
 	}
 
-
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
 	servAddr.sin_port = htons(PORT_NUMBER);
 
-	if((hostEntry = gethostbyname(argv[1])) == NULL){
+	if((hostEntry = gethostbyname(arg)) == NULL){
 		fprintf(stderr, "Error with gethostbyname call");
 		exit(EXIT_FAILURE);
 	}
@@ -39,12 +52,5 @@ int main(int argc, char *argv[]){
 		perror("Error with connect call");
 		exit(EXIT_FAILURE);
 	}
-	read(socketfd, date, 100);
-	for(int i = 0; i < 20; i++){
-		printf("%c", date[i]);
-	}
-	puts("");
-	close(socketfd);
-
-	return 0;
+	return socketfd;
 }

@@ -10,31 +10,21 @@
 #include<arpa/inet.h>
 #include<netdb.h>
 
-#define PORT_NUMBER				49999
-#define MAX_COMMAND_SIZE		4096
-#define MAX_ACKNOWLEDGE_SIZE	256
+#define PORT_NUMBER			49999
+#define MAX_COMMAND_SIZE	4096
 
 int hasargs(char *string);
 int makeconnection(char *hostname, int portnum);
-int getportnum(int socketfd);
-void printerror(char *errormessage);
 void cd(char *path);
 void ls();
-void rls(int rlssocket, int socketfd);
+void rls();
 
 int main(int argc, char *argv[]){
-	//check for correct args
-	if(argc < 2){
-		printerror("Error to few arguments: ");
-		exit(EXIT_FAILURE);
-	}
-
 	int socketfd = makeconnection(argv[1], PORT_NUMBER);
 	char *command = (char*)calloc(MAX_COMMAND_SIZE, sizeof(char));
 	char *tokenize = (char*)calloc(MAX_COMMAND_SIZE, sizeof(char));
 	char *token = (char*)calloc(MAX_COMMAND_SIZE, sizeof(char));
 	char *delims = " \n\t";
-
 	while(1){
 		printf("mftp>");
 		fgets(command, sizeof(char) * MAX_COMMAND_SIZE, stdin);
@@ -47,18 +37,7 @@ int main(int argc, char *argv[]){
 		if(!strcmp(token, "ls")){
 			ls();
 		}else if(!strcmp(token, "rls")){
-			int portnum;
-			int rlssocket;
-			if((portnum = getportnum(socketfd)) < 0){	
-				printerror("rls not executed due to error");
-				continue;
-			}
-			if((rlssocket = makeconnection(argv[1], portnum)) < 0){
-				printerror("rls not executed due to error");
-				continue;
-			}
-			rls(rlssocket, socketfd);
-			close(rlssocket);
+			rls();
 		}else if(!strcmp(token, "cd")){
 			token = strtok(NULL, delims);
 			cd(token);
@@ -105,27 +84,8 @@ void cd(char *path){
 	return;
 }
 
-int getportnum(int socketfd){
-	int portnum;
-	int bytes;
-	char *command = "D\n";
-	char *response = (char*)calloc(MAX_ACKNOWLEDGE_SIZE, sizeof(char));
-	write(socketfd, command, 2);
-	bytes = read(socketfd, response, MAX_ACKNOWLEDGE_SIZE);
-	if(response[0] == 'E'){
-		++response;
-		printf("%s", response);
-		return -1;
-	}else{
-		sscanf(response, "A%d\n", &portnum);
-	}
-	return portnum;
-}
-
-void rls(int rlssocket, int socketfd){
-	char *command = "L\n";
-	write(socketfd, command, 2);
-	return;
+void rls(){
+	
 }
 
 int makeconnection(char *hostname, int portnum){
@@ -136,7 +96,7 @@ int makeconnection(char *hostname, int portnum){
 
 	if((socketfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
 		perror("Error with socket call");
-		return -1;
+		exit(EXIT_FAILURE);
 	}
 
 	memset(&servAddr, 0, sizeof(servAddr));
@@ -145,20 +105,14 @@ int makeconnection(char *hostname, int portnum){
 
 	if((hostEntry = gethostbyname(hostname)) == NULL){
 		fprintf(stderr, "Error with gethostbyname call");
-		return -1;
+		exit(EXIT_FAILURE);
 	}
 	pptr = (struct in_addr**) hostEntry->h_addr_list;
 	memcpy(&servAddr.sin_addr, *pptr, sizeof(struct in_addr));
 
 	if((connect(socketfd, (struct sockaddr*) &servAddr, sizeof(servAddr))) < 0){
 		perror("Error with connect call");
-		return -1;
+		exit(EXIT_FAILURE);
 	}
 	return socketfd;
-}
-
-void printerror(char *errormessage){
-	strcat(errormessage, "\0");
-	fprintf(stderr, "%s\n", errormessage);
-	return;
 }
