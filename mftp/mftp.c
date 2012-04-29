@@ -6,6 +6,7 @@
 #include<ctype.h>
 #include<sys/types.h>
 #include<sys/socket.h>
+#include<sys/wait.h>
 #include<netinet/in.h>
 #include<arpa/inet.h>
 #include<netdb.h>
@@ -16,11 +17,12 @@
 
 int hasargs(char *string);
 int makeconnection(char *hostname, int portnum);
-int getportnum(int socketfd);
+int getportnum(int controlfd);
 void printerror(char *errormessage);
 void cd(char *path);
+void rcd(char *path, int controlfd);
 void ls();
-void rls(int rlssocket, int socketfd);
+void rls(int rlssocket, int controlfd);
 
 int main(int argc, char *argv[]){
 	//check for correct args
@@ -29,7 +31,7 @@ int main(int argc, char *argv[]){
 		exit(EXIT_FAILURE);
 	}
 
-	int socketfd = makeconnection(argv[1], PORT_NUMBER);
+	int controlfd = makeconnection(argv[1], PORT_NUMBER);
 	char *command = (char*)calloc(MAX_COMMAND_SIZE, sizeof(char));
 	char *tokenize = (char*)calloc(MAX_COMMAND_SIZE, sizeof(char));
 	char *token = (char*)calloc(MAX_COMMAND_SIZE, sizeof(char));
@@ -49,7 +51,8 @@ int main(int argc, char *argv[]){
 		}else if(!strcmp(token, "rls")){
 			int portnum;
 			int rlssocket;
-			if((portnum = getportnum(socketfd)) < 0){	
+			char *buf = (char*)calloc(MAX_ACKNOWLEDGE_SIZE, sizeof(char));
+			if((portnum = getportnum(controlfd)) < 0){	
 				printerror("rls not executed due to error");
 				continue;
 			}
@@ -57,13 +60,15 @@ int main(int argc, char *argv[]){
 				printerror("rls not executed due to error");
 				continue;
 			}
-			rls(rlssocket, socketfd);
+			rls(rlssocket, controlfd);
 			close(rlssocket);
+			free(buf);
 		}else if(!strcmp(token, "cd")){
 			token = strtok(NULL, delims);
 			cd(token);
 		}else if(!strcmp(token, "rcd")){
-
+			token = strtok(NULL, delims);
+			rcd(token, controlfd);
 		}else if(!strcmp(token, "get")){
 
 		}else if(!strcmp(token, "show")){
@@ -73,9 +78,9 @@ int main(int argc, char *argv[]){
 		}else if(!strcmp(token, "exit")){
 			char *quit = "Q\n";
 			char buf[100];
-			write(socketfd, quit, sizeof(char) * 2);
-			read(socketfd, buf, 100); 
-			close(socketfd);
+			write(controlfd, quit, sizeof(char) * 2);
+			read(controlfd, buf, 100); 
+			close(controlfd);
 			exit(EXIT_SUCCESS);
 		}
 	}
@@ -105,26 +110,45 @@ void cd(char *path){
 	return;
 }
 
-int getportnum(int socketfd){
+int getportnum(int controlfd){
 	int portnum;
 	int bytes;
 	char *command = "D\n";
 	char *response = (char*)calloc(MAX_ACKNOWLEDGE_SIZE, sizeof(char));
-	write(socketfd, command, 2);
-	bytes = read(socketfd, response, MAX_ACKNOWLEDGE_SIZE);
+	write(controlfd, command, 2);
+	bytes = read(controlfd, response, MAX_ACKNOWLEDGE_SIZE);
 	if(response[0] == 'E'){
 		++response;
 		printf("%s", response);
+		free(response);
 		return -1;
 	}else{
 		sscanf(response, "A%d\n", &portnum);
 	}
+	free(response);
 	return portnum;
 }
 
-void rls(int rlssocket, int socketfd){
-	char *command = "L\n";
-	write(socketfd, command, 2);
+void rls(int rlssocket, int controlfd){
+	char *response = (char*)calloc(MAX_ACKNOWLEDGE_SIZE, sizeof(char));
+	write(controlfd, "L\n", 2);
+	read(controlfd, response, MAX_ACKNOWLEDGE_SIZE);
+	if(response[0] == 'E'){
+		++response;
+		printf("%s", response);
+	}else{
+		int pid;
+		if(pid = fork()){
+			wait(NULL);
+		}else{
+			close(0);
+			dup2(rlssocket, 0);
+			close(rlssocket);
+			free(response);
+			execlp("more", "more", "-20", NULL);
+		}
+	}
+	free(response);
 	return;
 }
 
@@ -132,9 +156,9 @@ int makeconnection(char *hostname, int portnum){
 	struct sockaddr_in servAddr;
 	struct hostent *hostEntry;
 	struct in_addr **pptr;
-	int socketfd;
+	int controlfd;
 
-	if((socketfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+	if((controlfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
 		perror("Error with socket call");
 		return -1;
 	}
@@ -150,15 +174,21 @@ int makeconnection(char *hostname, int portnum){
 	pptr = (struct in_addr**) hostEntry->h_addr_list;
 	memcpy(&servAddr.sin_addr, *pptr, sizeof(struct in_addr));
 
-	if((connect(socketfd, (struct sockaddr*) &servAddr, sizeof(servAddr))) < 0){
+	if((connect(controlfd, (struct sockaddr*) &servAddr, sizeof(servAddr))) < 0){
 		perror("Error with connect call");
 		return -1;
 	}
-	return socketfd;
+	return controlfd;
 }
 
 void printerror(char *errormessage){
 	strcat(errormessage, "\0");
 	fprintf(stderr, "%s\n", errormessage);
 	return;
+}
+
+void rcd(char *path, int controlfd){
+	char *command = (char*)calloc(4096, sizeof(char));
+	command[0] = 'C';
+	strcat(command, 
 }
