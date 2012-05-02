@@ -65,7 +65,6 @@ int main(int argc, char *argv[]){
 				printerror("rls not executed due to error");
 				continue;
 			}
-			puts("here");
 			rls(rlssocket, controlfd);
 			close(rlssocket);
 		}else if(!strcmp(token, "cd")){
@@ -79,6 +78,10 @@ int main(int argc, char *argv[]){
 			int getsocket;
 			int filefd;
 			token = strtok(NULL, delims);
+			if(token == NULL){
+				printerror("Error expected parameter to get");
+				continue;
+			}
 			char *filenamedelims = "/";
 			char *filename = strtok(token, filenamedelims);
 			char *lastname = filename;
@@ -105,6 +108,10 @@ int main(int argc, char *argv[]){
 			int portnum;
 			int showsocket;
 			token = strtok(NULL, delims);
+			if(token == NULL){
+				printerror("Error expected parameter to show");
+				continue;
+			}
 			if((portnum = getportnum(controlfd)) < 0){
 				printerror("show not executed due to error");
 				continue;
@@ -120,6 +127,10 @@ int main(int argc, char *argv[]){
 			int putsocket;
 			int filefd;
 			token = strtok(NULL, delims);
+			if(token == NULL){
+				printerror("Error expected parameter to put");
+				continue;
+			}
 			char *filenamedelims = "/";
 			char *filename = strtok(token, filenamedelims);
 			char *lastname = filename;
@@ -153,6 +164,8 @@ int main(int argc, char *argv[]){
 			read(controlfd, buf, 100); 
 			close(controlfd);
 			exit(EXIT_SUCCESS);
+		}else{
+			printerror("Unknown command ignored");
 		}
 	}
 }
@@ -219,6 +232,9 @@ void rls(int rlssocket, int controlfd){
 void show(char *path, int showsocket, int controlfd){
 	char response[MAX_ACKNOWLEDGE_SIZE] = {0};
 	char *command = (char*)calloc(256, sizeof(char));
+	if(path == NULL){
+		printf("Error expected argument to show");
+	}
 	command[0] = 'G';
 	strcat(command, path);
 	strcat(command, "\n");
